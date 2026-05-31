@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Privacy Policy — API Retry Tool</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f8f9fc;
+        --text: #1a1d26;
+        --muted: #5c6478;
+        --border: #dfe3ec;
+        --card: #ffffff;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0f1117;
+          --text: #eef1f8;
+          --muted: #9aa3b8;
+          --border: #2a3142;
+          --card: #161922;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: Inter, system-ui, -apple-system, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.6;
+      }
+      main {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 40px 20px 64px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 28px 32px;
+      }
+      h1 {
+        margin: 0 0 8px;
+        font-size: 1.75rem;
+      }
+      .meta {
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin-bottom: 24px;
+      }
+      h2 {
+        margin: 28px 0 10px;
+        font-size: 1.1rem;
+      }
+      p,
+      li {
+        color: var(--text);
+      }
+      ul {
+        padding-left: 1.25rem;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.92rem;
+        margin-top: 8px;
+      }
+      th,
+      td {
+        border: 1px solid var(--border);
+        padding: 10px 12px;
+        text-align: left;
+        vertical-align: top;
+      }
+      th {
+        background: var(--bg);
+      }
+      a {
+        color: #0f62fe;
+      }
+      strong.highlight {
+        color: var(--text);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <article class="card">
+        <h1>Privacy Policy — API Retry Tool</h1>
+        <p class="meta">
+          <strong>Last updated:</strong> May 31, 2026<br />
+          <strong>Developer:</strong> Upasana
+        </p>
+
+        <p>
+          API Retry Tool is a browser extension that helps developers capture
+          failed API requests (HTTP 4xx), edit request payloads, and retry calls
+          from the page.
+        </p>
+
+        <h2>Data collection</h2>
+        <p>
+          <strong class="highlight"
+            >We do not collect, store, or transmit any personal data to external
+            servers.</strong
+          >
+        </p>
+        <p>
+          All captured request data (URL, method, status, payload) stays
+          <strong>locally in your browser</strong> for the current tab session.
+          Nothing is sent to the extension developer or any third party.
+        </p>
+
+        <h2>Permissions used</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Permission</th>
+              <th>Why</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>activeTab</code></td>
+              <td>Access the current tab when you interact with the extension</td>
+            </tr>
+            <tr>
+              <td>Content scripts on web pages</td>
+              <td>
+                Intercept fetch / XHR to detect 4xx failures on pages you visit
+              </td>
+            </tr>
+            <tr>
+              <td><code>web_accessible_resources</code> (injected.js)</td>
+              <td>
+                Run network interception in the page context so real app APIs
+                are captured
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h2>What the extension accesses</h2>
+        <ul>
+          <li>Failed HTTP requests (status 400–499) on same-origin or /api paths</li>
+          <li>Request URL, method, and body (when present)</li>
+        </ul>
+        <p>
+          The extension does <strong>not</strong> read passwords, cookies, or
+          unrelated page content.
+        </p>
+
+        <h2>Data retention</h2>
+        <p>Failed request data is held in memory until you:</p>
+        <ul>
+          <li>dismiss an item,</li>
+          <li>clear the list, or</li>
+          <li>close/refresh the tab.</li>
+        </ul>
+        <p>
+          No persistent storage is used unless that feature is added in a future
+          version.
+        </p>
+
+        <h2>Third-party services</h2>
+        <p>
+          This extension does not integrate with analytics, ads, or external
+          APIs.
+        </p>
+
+        <h2>Contact</h2>
+        <p>
+          For privacy questions, contact <strong>Upasana</strong> at
+          <a href="mailto:upasanaarora00@gmail.com">upasanaarora00@gmail.com</a>
+        </p>
+      </article>
+    </main>
+  </body>
+</html>
