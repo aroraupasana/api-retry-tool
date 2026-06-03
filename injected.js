@@ -27,21 +27,25 @@
   }
 
   function shouldTrack(url) {
+    if (!url || typeof url !== "string") return false;
+    if (url.startsWith("blob:") || url.startsWith("data:")) return false;
     try {
       const parsed = new URL(url, location.origin);
-      return (
-        parsed.origin === location.origin || parsed.pathname.includes("/api")
-      );
+      if (parsed.origin === location.origin) return true;
+      return /\/api(\/|$)/i.test(parsed.pathname);
     } catch {
-      return false;
+      return url.startsWith("/");
     }
   }
 
   function emitFailure(payload) {
     if (!is4xx(payload?.status)) return;
-    window.postMessage(
-      { source: MSG.SOURCE, type: MSG.FAILED, payload },
-      "*",
+
+    const message = { source: MSG.SOURCE, type: MSG.FAILED, payload };
+    window.postMessage(message, "*");
+
+    document.dispatchEvent(
+      new CustomEvent("api-retry-extension-failed", { detail: payload }),
     );
   }
 

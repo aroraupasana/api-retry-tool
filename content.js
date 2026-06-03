@@ -20,6 +20,7 @@
     requests: [],
     ui: {
       query: "",
+      hidden: false,
       expanded: false,
       hasNew: false,
       editingIndex: null,
@@ -57,7 +58,11 @@
         return body;
       }
     }
-    return JSON.stringify(body, pretty ? null : undefined, pretty ? 2 : undefined);
+    return JSON.stringify(
+      body,
+      pretty ? null : undefined,
+      pretty ? 2 : undefined,
+    );
   }
 
   function getRequestBody(req) {
@@ -102,12 +107,32 @@
 
     const entry = { ...req, createdAt: req.createdAt ?? Date.now() };
     const signature = requestSignature(entry);
-    const duplicate = store.requests.some((r) => requestSignature(r) === signature);
-    if (duplicate) return;
+    const duplicate = store.requests.some(
+      (r) => requestSignature(r) === signature,
+    );
 
-    store.requests.unshift(entry);
+    if (!duplicate) {
+      store.requests.unshift(entry);
+    }
+
+    surfacePanel();
+  }
+
+  function surfacePanel() {
+    store.ui.hidden = false;
     if (!store.ui.expanded) store.ui.hasNew = true;
-    window.dispatchEvent(new Event("api-failed"));
+
+    createPanel();
+    const panel = document.getElementById("api-retry-panel");
+    if (!panel) return;
+
+    panel.classList.remove("is-hidden");
+    panel.classList.add("is-collapsed");
+    panel.classList.remove("is-expanded");
+    panel.style.removeProperty("display");
+    store.ui.expanded = false;
+
+    render();
   }
 
   function clearRequests() {
@@ -139,24 +164,10 @@
   }
 
   // ---------------------------------------------------------------------------
-  // Page bridge (injected script ↔ content script)
+  // Page bridge (MAIN world injected.js ↔ isolated content script)
   // ---------------------------------------------------------------------------
 
-  function injectInterceptor() {
-    if (document.getElementById("api-retry-injected-script")) return;
-
-    const script = document.createElement("script");
-    script.id = "api-retry-injected-script";
-    script.src = chrome.runtime.getURL("injected.js");
-    script.onload = () => script.remove();
-    (document.head || document.documentElement).appendChild(script);
-  }
-
-  function onPageMessage(event) {
-    if (event.source !== window || event.data?.source !== MSG.SOURCE) return;
-    if (event.data.type !== MSG.FAILED) return;
-
-    const p = event.data.payload ?? {};
+  function ingestFailurePayload(p) {
     addFailedRequest({
       type: p.type || "fetch",
       url: normalizeUrl(p.url),
@@ -165,6 +176,16 @@
       options: p.options ?? {},
       body: p.body,
     });
+  }
+
+  function onPageMessage(event) {
+    const data = event.data;
+    if (!data || data.source !== MSG.SOURCE || data.type !== MSG.FAILED) return;
+    ingestFailurePayload(data.payload ?? {});
+  }
+
+  function onPageFailureEvent(event) {
+    ingestFailurePayload(event.detail ?? {});
   }
 
   // ---------------------------------------------------------------------------
@@ -243,6 +264,17 @@
     }
   }
 
+  function hidePanel() {
+    store.ui.hidden = true;
+    store.ui.expanded = false;
+    const panel = document.getElementById("api-retry-panel");
+    if (!panel) return;
+    panel.classList.add("is-hidden");
+    panel.classList.remove("is-expanded");
+    panel.classList.add("is-collapsed");
+    panel.style.display = "none";
+  }
+
   function createPanel() {
     if ($(SELECTORS.panel)) return;
 
@@ -250,14 +282,17 @@
     panel.id = "api-retry-panel";
     panel.className = "is-collapsed";
     panel.innerHTML = `
-      <button type="button" id="panel-handle" aria-label="Expand failed APIs panel">
-        <span class="handle-bar" aria-hidden="true"></span>
-        <span class="handle-row">
-          <span class="handle-title">⚡ Failed APIs</span>
-          <span id="api-count-badge" class="api-count-badge">0</span>
-          <span class="handle-chevron" aria-hidden="true">↑</span>
-        </span>
-      </button>
+      <div id="handle-wrap">
+        <button type="button" id="panel-handle" aria-label="Expand failed APIs panel">
+          <span class="handle-bar" aria-hidden="true"></span>
+          <span class="handle-row">
+            <span class="handle-title">⚡ Failed APIs</span>
+            <span id="api-count-badge" class="api-count-badge">0</span>
+            <span class="handle-chevron" aria-hidden="true">↑</span>
+          </span>
+        </button>
+        <button type="button" class="close-btn handle-close" aria-label="Close panel" title="Close">×</button>
+      </div>
       <div id="panel-body">
         <header id="header">
           <div id="header-title-wrap">
@@ -268,6 +303,7 @@
             ${DEV_MODE ? '<button type="button" id="test-fail-btn">Test</button>' : ""}
             <button type="button" id="toggle-btn" aria-expanded="false" title="Collapse panel">↑</button>
             <button type="button" id="clear-btn">Clear</button>
+            <button type="button" class="close-btn" aria-label="Close panel" title="Close">×</button>
           </div>
         </header>
         <div id="toolbar">
@@ -323,7 +359,12 @@
     return store.requests
       .map((req, index) => ({ req, index }))
       .filter(({ req }) =>
-        [req.url, req.method, String(req.status), serializeBody(getRequestBody(req))]
+        [
+          req.url,
+          req.method,
+          String(req.status),
+          serializeBody(getRequestBody(req)),
+        ]
           .join(" ")
           .toLowerCase()
           .includes(q),
@@ -393,9 +434,11 @@
 
     panel.classList.toggle("has-new", store.ui.hasNew && !store.ui.expanded);
 
-    document.querySelectorAll("#api-retry-panel .api-count-badge").forEach((el) => {
-      el.textContent = String(store.requests.length);
-    });
+    document
+      .querySelectorAll("#api-retry-panel .api-count-badge")
+      .forEach((el) => {
+        el.textContent = String(store.requests.length);
+      });
 
     listEl.replaceChildren();
 
@@ -516,6 +559,10 @@
       handleTestRequest();
       return;
     }
+    if (target.classList.contains("close-btn")) {
+      hidePanel();
+      return;
+    }
     if (target.id === "panel-handle" && !store.ui.expanded) {
       setPanelExpanded(true);
       render();
@@ -552,16 +599,11 @@
   // ---------------------------------------------------------------------------
 
   function init() {
-    window.addEventListener("message", onPageMessage);
-    window.addEventListener("api-failed", () => {
-      createPanel();
-      render();
-    });
+    window.addEventListener("message", onPageMessage, false);
+    document.addEventListener("api-retry-extension-failed", onPageFailureEvent);
 
     document.addEventListener("click", onClick);
     document.addEventListener("input", onInput);
-
-    injectInterceptor();
   }
 
   init();

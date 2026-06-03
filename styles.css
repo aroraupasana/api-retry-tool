@@ -4,16 +4,32 @@
   bottom: 0;
   width: 360px;
   max-width: calc(100vw - 32px);
-  z-index: 999999;
+  z-index: 2147483647;
   font-family: Inter, system-ui, -apple-system, sans-serif;
   font-size: 12px;
   color: #fff;
-  pointer-events: none;
+  display: block;
+  pointer-events: auto;
 }
 
-#api-retry-panel.is-collapsed,
-#api-retry-panel.is-expanded {
-  pointer-events: auto;
+#api-retry-panel.is-hidden {
+  display: none !important;
+}
+
+#api-retry-panel:not(.is-hidden) {
+  display: block !important;
+  pointer-events: auto !important;
+}
+
+#handle-wrap {
+  position: relative;
+}
+
+#handle-wrap .handle-close {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  z-index: 2;
 }
 
 /* ---- Collapsed: compact bottom tab ---- */
@@ -64,7 +80,7 @@
   cursor: grabbing;
 }
 
-#api-retry-panel.is-expanded #panel-handle {
+#api-retry-panel.is-expanded #handle-wrap {
   display: none;
 }
 
@@ -324,6 +340,28 @@
   cursor: pointer;
   border-radius: 4px;
   font-size: 11px;
+}
+
+.close-btn {
+  background: transparent;
+  border: none;
+  color: #9aa3b8;
+  font-size: 18px;
+  line-height: 1;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  cursor: pointer;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.close-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #eef2ff;
 }
 
 .pill {
