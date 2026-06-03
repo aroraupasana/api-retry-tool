@@ -7,6 +7,8 @@
   const METHODS_WITHOUT_BODY = new Set(["GET", "HEAD"]);
   const SELECTORS = {
     panel: "#api-retry-panel",
+    body: "#panel-body",
+    handle: "#panel-handle",
     list: "#list",
     badge: "#api-count-badge",
     toolbar: "#toolbar",
@@ -18,7 +20,8 @@
     requests: [],
     ui: {
       query: "",
-      minimized: false,
+      expanded: false,
+      hasNew: false,
       editingIndex: null,
       draftBodies: Object.create(null),
       retryingByIndex: Object.create(null),
@@ -103,6 +106,7 @@
     if (duplicate) return;
 
     store.requests.unshift(entry);
+    if (!store.ui.expanded) store.ui.hasNew = true;
     window.dispatchEvent(new Event("api-failed"));
   }
 
@@ -222,30 +226,94 @@
     }, 1800);
   }
 
+  function setPanelExpanded(expanded) {
+    store.ui.expanded = expanded;
+    if (expanded) store.ui.hasNew = false;
+
+    const panel = $(SELECTORS.panel);
+    const toggle = $(SELECTORS.toggle);
+    if (panel) {
+      panel.classList.toggle("is-expanded", expanded);
+      panel.classList.toggle("is-collapsed", !expanded);
+    }
+    if (toggle) {
+      toggle.textContent = expanded ? "↓" : "↑";
+      toggle.setAttribute("aria-expanded", String(expanded));
+      toggle.title = expanded ? "Collapse panel" : "Expand panel";
+    }
+  }
+
   function createPanel() {
     if ($(SELECTORS.panel)) return;
 
     const panel = document.createElement("div");
     panel.id = "api-retry-panel";
+    panel.className = "is-collapsed";
     panel.innerHTML = `
-      <header id="header">
-        <div id="header-title-wrap">
-          <span id="header-title">⚡ Failed APIs</span>
-          <span id="api-count-badge">0</span>
+      <button type="button" id="panel-handle" aria-label="Expand failed APIs panel">
+        <span class="handle-bar" aria-hidden="true"></span>
+        <span class="handle-row">
+          <span class="handle-title">⚡ Failed APIs</span>
+          <span id="api-count-badge" class="api-count-badge">0</span>
+          <span class="handle-chevron" aria-hidden="true">↑</span>
+        </span>
+      </button>
+      <div id="panel-body">
+        <header id="header">
+          <div id="header-title-wrap">
+            <span id="header-title">Failed APIs</span>
+            <span class="api-count-badge header-badge">0</span>
+          </div>
+          <div id="header-actions">
+            ${DEV_MODE ? '<button type="button" id="test-fail-btn">Test</button>' : ""}
+            <button type="button" id="toggle-btn" aria-expanded="false" title="Collapse panel">↑</button>
+            <button type="button" id="clear-btn">Clear</button>
+          </div>
+        </header>
+        <div id="toolbar">
+          <input id="search-input" type="search" placeholder="Search URL, method, status, body" />
         </div>
-        <div id="header-actions">
-          ${DEV_MODE ? '<button type="button" id="test-fail-btn">Test</button>' : ""}
-          <button type="button" id="toggle-btn" aria-expanded="true">_</button>
-          <button type="button" id="clear-btn">Clear</button>
-        </div>
-      </header>
-      <div id="toolbar">
-        <input id="search-input" type="search" placeholder="Search URL, method, status, body" />
+        <div id="list"></div>
+        <footer id="panel-footer">by ${AUTHOR}</footer>
       </div>
-      <div id="list"></div>
-      <footer id="panel-footer">by ${AUTHOR}</footer>
     `;
     document.body.appendChild(panel);
+    setupPanelDrag();
+  }
+
+  function setupPanelDrag() {
+    const handle = $(SELECTORS.handle);
+    const panel = $(SELECTORS.panel);
+    if (!handle || !panel) return;
+
+    let startY = 0;
+    let dragging = false;
+
+    handle.addEventListener("pointerdown", (e) => {
+      dragging = true;
+      startY = e.clientY;
+      handle.setPointerCapture(e.pointerId);
+    });
+
+    handle.addEventListener("pointermove", (e) => {
+      if (!dragging) return;
+      const delta = startY - e.clientY;
+      if (delta > 36 && !store.ui.expanded) {
+        setPanelExpanded(true);
+        render();
+        dragging = false;
+      }
+    });
+
+    handle.addEventListener("pointerup", (e) => {
+      if (!dragging) return;
+      const delta = startY - e.clientY;
+      if (Math.abs(delta) < 8 && !store.ui.expanded) {
+        setPanelExpanded(true);
+        render();
+      }
+      dragging = false;
+    });
   }
 
   function filterRequests() {
@@ -318,24 +386,18 @@
 
   function render() {
     const listEl = $(SELECTORS.list);
-    if (!listEl) return;
+    const panel = $(SELECTORS.panel);
+    if (!listEl || !panel) return;
 
-    const badge = $(SELECTORS.badge);
-    const toolbar = $(SELECTORS.toolbar);
-    const toggle = $(SELECTORS.toggle);
     const entries = filterRequests();
 
-    if (badge) badge.textContent = String(store.requests.length);
-    if (toolbar) toolbar.hidden = store.ui.minimized;
-    if (toggle) {
-      toggle.textContent = store.ui.minimized ? "+" : "_";
-      toggle.setAttribute("aria-expanded", String(!store.ui.minimized));
-    }
+    panel.classList.toggle("has-new", store.ui.hasNew && !store.ui.expanded);
 
-    listEl.hidden = store.ui.minimized;
+    document.querySelectorAll("#api-retry-panel .api-count-badge").forEach((el) => {
+      el.textContent = String(store.requests.length);
+    });
+
     listEl.replaceChildren();
-
-    if (store.ui.minimized) return;
 
     if (entries.length === 0) {
       const empty = document.createElement("p");
@@ -454,9 +516,15 @@
       handleTestRequest();
       return;
     }
-    if (target.id === "toggle-btn") {
-      store.ui.minimized = !store.ui.minimized;
+    if (target.id === "panel-handle" && !store.ui.expanded) {
+      setPanelExpanded(true);
       render();
+      return;
+    }
+    if (target.id === "toggle-btn" && store.ui.expanded) {
+      setPanelExpanded(false);
+      render();
+      return;
     }
   }
 
@@ -489,17 +557,11 @@
       createPanel();
       render();
     });
-    window.addEventListener("load", () => {
-      createPanel();
-      render();
-    });
 
     document.addEventListener("click", onClick);
     document.addEventListener("input", onInput);
 
     injectInterceptor();
-    createPanel();
-    render();
   }
 
   init();
